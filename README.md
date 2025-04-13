@@ -52,8 +52,8 @@ device-stats-service/
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/device-stats-service.git
-cd device-stats-service
+git clone https://github.com/yar0slave/statictics_service/
+cd statictics_service
 ```
 
 2. Start the services using Docker Compose:
