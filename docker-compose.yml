@@ -1,0 +1,82 @@
+services:
+  app:
+    build: .
+    container_name: device-stats-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=device_stats
+      - POSTGRES_PORT=5432
+    depends_on:
+      - db
+      - migration
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: always
+    networks:
+      - device-stats-network
+
+  migration:
+    build: .
+    container_name: device-stats-migration
+    volumes:
+      - .:/app
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=device_stats
+      - POSTGRES_PORT=5432
+    depends_on:
+      db:
+        condition: service_healthy
+    command: alembic upgrade head
+    networks:
+      - device-stats-network
+
+  db:
+    image: postgres:14-alpine
+    container_name: device-stats-db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=device_stats
+    ports:
+      - "5432:5432"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - device-stats-network
+
+  locust:
+    build:
+      context: .
+      dockerfile: locust/Dockerfile
+    container_name: device-stats-locust
+    ports:
+      - "8089:8089"
+    volumes:
+      - ./locust:/app/locust
+    environment:
+      - TARGET_HOST=http://app:8000
+    depends_on:
+      - app
+    networks:
+      - device-stats-network
+
+volumes:
+  postgres_data:
+
+networks:
+  device-stats-network:
+    driver: bridge
